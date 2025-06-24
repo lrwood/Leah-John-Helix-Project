@@ -1,0 +1,135 @@
+---
+title: "Helix Exploratory"
+author: "Leah Wood"
+date: "2025-06-20"
+output: pdf_document
+---
+
+```{r}
+#Read in the data
+codebook<-read.csv("codebook.csv", header=T)
+covariates<-read.csv("covariates.csv", header = T)
+exposome<-read.csv("exposome.csv", header = T)
+phenotype<-read.csv("phenotype.csv", header=T)
+covariates<-covariates[,-1]
+phenotype<-phenotype[,-1]
+```
+
+```{r}
+PFAS_codebook<-codebook[c(2,160:169),]
+PFAS_exposome<-exposome[,c(PFAS_codebook$variable_name)]
+PFAS_exposome<-cbind(exposome$ID, PFAS_exposome)
+```
+
+```{r}
+
+covariates[c("h_edumc_None", "h_cohort", "h_parity_None", "h_native_None", "e3_sex_None")] <- lapply(
+  covariates[c("h_edumc_None", "h_cohort", "h_parity_None","h_native_None","e3_sex_None")],
+  as.factor
+)
+summary(covariates)
+```
+
+```{r}
+phenotype[c("hs_asthma", "hs_bmi_c_cat")] <- lapply(phenotype[c("hs_asthma", "hs_bmi_c_cat")], as.factor)
+
+```
+
+```{r}
+#install.packages("table1")
+library(table1)
+```
+
+```{r}
+#install.packages("tableone")
+library(tableone)
+```
+
+```{r}
+vars_cov<-c("h_cohort","e3_sex_None","e3_yearbir_None","h_mbmi_None","hs_wgtgain_None","e3_gac_None","h_age_None","h_edumc_None","h_native_None","h_parity_None","hs_child_age_None","hs_c_height_None","hs_c_weight_None" )
+tab_cov<-CreateTableOne(data=covariates, vars=vars_cov)
+print(tab_cov)
+summary(tab_cov)
+```
+
+```{r}
+vars_phen<-colnames(phenotype)
+vars_phen<-vars_phen[-1]
+```
+
+```{r}
+tab_phen<-CreateTableOne(data=phenotype,vars=vars_phen)
+print(tab_phen)
+summary(tab_phen)
+```
+
+```{r}
+tab_exp<-CreateTableOne(data=exposome)
+print(tab_exp)
+summary(tab_exp)
+```
+
+```{r}
+
+covariates_continuous<-list(
+  `Mother BMI` = covariates$h_mbmi_None,
+  `Mother Weight Gain` = covariates$hs_wgtgain_None,
+  `Gestational Age (Birth)` = covariates$e3_gac_None,
+  `Mother Age` = covariates$h_age_None,
+  `Child Age` = covariates$hs_child_age_None,
+  `Child Height` = covariates$hs_c_height_None,
+  `Child Weight` = covariates$hs_c_weight_None
+)
+cov_hist<-list()
+for (i in seq_along(covariates_continuous)){
+  covariate<-covariates_continuous[[i]]
+  covariate_name<-names(covariates_continuous)[i]
+  p<-hist(covariate, main=paste("Histogram of", covariate_name), xlab=covariate_name)
+  cov_hist[[i]]<-p
+}
+
+```
+
+```{r}
+PFAS_exposome<-PFAS_exposome[,-2]
+```
+
+```{r}
+data_merge<-cbind(PFAS_exposome, covariates[,2:14], exposome$e3_alcpreg_yn_None, exposome$hs_caff_drink_Ter, exposome$h_folic_t1_None, phenotype$hs_correct_raven, phenotype$hs_Gen_Tot)
+colnames(data_merge)[1]<-"ID"
+colnames(data_merge)[27]<-"h_folic_t1_None"
+colnames(data_merge)[26]<-"hs_caff_drink_Ter"
+colnames(data_merge)[25]<-"e3_alcpreg_yn_None"
+colnames(data_merge)[28]<-"hs_correct_raven"
+colnames(data_merge)[29]<-"hs_Gen_Tot"
+```
+
+```{r}
+label(data_merge$hs_pfhxs_c_Log2)<-PFAS_codebook[2,9]
+label(data_merge$hs_pfhxs_m_Log2)<-PFAS_codebook[3,9]
+label(data_merge$hs_pfna_c_Log2)<-PFAS_codebook[4,9]
+label(data_merge$hs_pfna_m_Log2)<-PFAS_codebook[5,9]
+label(data_merge$hs_pfoa_c_Log2)<-PFAS_codebook[6,9]
+label(data_merge$hs_pfoa_m_Log2)<-PFAS_codebook[7,9]
+label(data_merge$hs_pfos_c_Log2)<-PFAS_codebook[8,9]
+label(data_merge$hs_pfos_m_Log2)<-PFAS_codebook[9,9]
+label(data_merge$hs_pfunda_c_Log2)<-PFAS_codebook[10,9]
+label(data_merge$hs_pfunda_m_Log2)<-PFAS_codebook[11,9]
+```
+
+```{r}
+library(table1)
+```
+
+
+```{r}
+table1(~hs_pfhxs_c_Log2+hs_pfhxs_m_Log2+hs_pfna_c_Log2+hs_pfna_m_Log2+hs_pfoa_c_Log2+hs_pfoa_m_Log2+hs_pfos_c_Log2+hs_pfos_m_Log2+hs_pfunda_c_Log2+hs_pfunda_m_Log2,data=data_merge)
+```
+
+
+
+```{r}
+hist(data_merge$hs_Gen_Tot, main="Histogram of Behavioral Scores in Children", xlab="Behavior Score (CBCL Scale)", col="steelblue")
+```
+
+
