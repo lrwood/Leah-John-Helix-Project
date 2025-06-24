@@ -21,6 +21,8 @@ PFAS_exposome<-exposome[,c(PFAS_codebook$variable_name)]
 PFAS_exposome<-cbind(exposome$ID, PFAS_exposome)
 ```
 
+
+
 ```{r}
 
 covariates[c("h_edumc_None", "h_cohort", "h_parity_None", "h_native_None", "e3_sex_None")] <- lapply(
@@ -132,4 +134,7 @@ table1(~hs_pfhxs_c_Log2+hs_pfhxs_m_Log2+hs_pfna_c_Log2+hs_pfna_m_Log2+hs_pfoa_c_
 hist(data_merge$hs_Gen_Tot, main="Histogram of Behavioral Scores in Children", xlab="Behavior Score (CBCL Scale)", col="steelblue")
 ```
 
+```{r}
+plot(data_merge$hs_pfhxs_c_Log2,data_merge$hs_Gen_Tot)
+```
 
