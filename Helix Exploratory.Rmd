@@ -19,6 +19,7 @@ phenotype<-phenotype[,-1]
 PFAS_codebook<-codebook[c(2,160:169),]
 PFAS_exposome<-exposome[,c(PFAS_codebook$variable_name)]
 PFAS_exposome<-cbind(exposome$ID, PFAS_exposome)
+
 ```
 
 
@@ -135,6 +136,50 @@ hist(data_merge$hs_Gen_Tot, main="Histogram of Behavioral Scores in Children", x
 ```
 
 ```{r}
-plot(data_merge$hs_pfhxs_c_Log2,data_merge$hs_Gen_Tot)
+#Adding clinical significance measurement
+data_merge$clinical_significance<-vector(length=1301)
+
+for (i in 1:1301) {
+  score <- data_merge$hs_Gen_Tot[i]
+  
+  if (score < 60) {
+    data_merge$clinical_significance[i] <- "Normal"
+  } else if (score > 69) {
+    data_merge$clinical_significance[i] <- "Clinically Significant"
+  } else if (score >= 60 & score <= 69) {
+    data_merge$clinical_significance[i] <- "Borderline"
+  }
+}
+
+```
+
+```{r}
+library(ggplot2)
+```
+
+```{r}
+data_merge$clinical_significance <- factor(data_merge$clinical_significance, levels = c("Normal", "Borderline", "Clinically Significant"))
+
+
+for (i in 2:11) {
+  var_name <- names(data_merge)[i]
+  
+  p <- ggplot(data_merge, aes(x = .data[[var_name]], fill = clinical_significance)) +
+    geom_histogram(alpha = 0.5, position = "identity", bins = 30, color = "black") +
+    labs(
+      title = "PFAS Exposure by Behavioral Type",
+      x = var_name,
+      fill = "Clinical Significance"
+    ) +
+    theme_minimal()
+  
+  print(p)
+}
+
+```
+
+
+```{r}
+table1(~hs_pfhxs_c_Log2+hs_pfhxs_m_Log2+hs_pfna_c_Log2+hs_pfna_m_Log2+hs_pfoa_c_Log2+hs_pfoa_m_Log2+hs_pfos_c_Log2+hs_pfos_m_Log2+hs_pfunda_c_Log2+hs_pfunda_m_Log2|clinical_significance,data=data_merge)
 ```
 
