@@ -94,3 +94,119 @@ pfas_pvals <- as.data.frame(t(pfas_pvals))
 pfas_pvals
 ```
 
+Table One for Covariates
+
+```{r}
+#We are going to make a Table1 for Covariates
+
+Covariate_new = cbind(covariates, PFAS$hs_Gen_Tot, PFAS$behavior_concern)
+Covariate_new = rename(Covariate_new, hs_Gen_Tot = `PFAS$hs_Gen_Tot`)
+Covariate_new = rename(Covariate_new, behavior_concern = `PFAS$behavior_concern`)              
+```
+
+```{r}
+#We are making the covariates factors
+Covariate_new$h_cohort = as.factor(Covariate_new$h_cohort)
+Covariate_new$e3_sex_None = as.factor(Covariate_new$e3_sex_None)
+Covariate_new$e3_yearbir_None = as.factor(Covariate_new$e3_yearbir_None)
+Covariate_new$h_edumc_None = as.factor(Covariate_new$h_edumc_None)
+Covariate_new$h_native_None = as.factor(Covariate_new$h_native_None)
+Covariate_new$h_parity_None = as.factor(Covariate_new$h_parity_None)
+```
+
+```{r}
+# Releveling
+```
+
+```{r}
+# Adding labels
+label(Covariate_new$h_cohort) = "Cohort"
+label(Covariate_new$e3_sex_None) = "Sex"
+label(Covariate_new$e3_yearbir_None) = "Birth Year (Child)"
+label(Covariate_new$h_mbmi_None) = "BMI (Mother)"
+label(Covariate_new$hs_wgtgain_None) = "Weight Gain (Pregnancy) (kg)"
+label(Covariate_new$e3_gac_None) = "Gest. Age at Birth (Weeks)"
+label(Covariate_new$h_age_None) = "Age (Mother)"
+label(Covariate_new$h_edumc_None) = "Education Level (Mother)"
+label(Covariate_new$h_native_None) = "Nativity (Parents)"
+label(Covariate_new$h_parity_None) = "Parity"
+label(Covariate_new$hs_child_age_None) = "Age (Child)"
+label(Covariate_new$hs_c_height_None) = "Height (Child) (m)"
+label(Covariate_new$hs_c_weight_None) = "Weight (Child) (kg)"
+```
+
+
+```{r}
+caption2 = "Covariates in Child Behavioral Categories"
+```
+
+```{r}
+library(table1)
+table1(~h_cohort + e3_sex_None + e3_yearbir_None + h_mbmi_None + hs_wgtgain_None + e3_gac_None + h_age_None + h_edumc_None + h_native_None + h_parity_None + hs_child_age_None + hs_c_height_None + hs_c_weight_None | behavior_concern, data=Covariate_new, overall = c(left = "Total"), caption = caption2)
+
+```
+
+```{r}
+#Get P-vals
+cov_vars_cont <- names(Covariate_new)[c(5,6,7,8,12,13,14)] 
+
+cov_pvals <- sapply(cov_vars_cont, function(var) {
+  test <- wilcox.test(Covariate_new[[var]] ~ Covariate_new$behavior_concern)
+  c(p.value = test$p.value, statistic = test$statistic)
+})
+
+# Convert to data frame for easier viewing
+cov_pvals <- as.data.frame(t(cov_pvals))
+cov_pvals
+```
+
+```{r}
+#Get P-vals
+cov_vars_cat <- names(Covariate_new)[c(2,3,4,9,10,11)] 
+
+
+cov_pvals2 <- sapply(cov_vars_cat, function(var) {
+  tab<-table(Covariate_new[[var]],Covariate_new$behavior_concern)
+  test <- chisq.test(tab)
+  c(p.value = test$p.value, statistic = test$statistic)
+})
+
+# Convert to data frame for easier viewing
+cov_pvals2 <- as.data.frame(t(cov_pvals2))
+cov_pvals2
+```
+
+Table 1 For Proteome
+
+```{r}
+proteome<-t(as.data.frame(proteome.d))
+```
+
+```{r}
+
+df_large_subset <- PFAS[rownames(proteome),]
+
+proteome <- cbind(proteome, df_large_subset)
+proteome<-proteome[,-(37:49)]
+caption3<-"Proteins and Child Behavioral Categories"
+```
+
+```{r}
+table1(~ Adiponectin + CRP + APO.A1 + APO.B + APO.E + IL1beta + IL6 + MCP1 + Leptin + HGF + INSULIN + TNFalfa + BAFF + Cpeptide + PAI1 + IL8 + FGFBasic + GCSF + IL10 + IL13 + IL12 + Eotaxin + IL17 + MIP1alfa + MIP1beta + IL15 + EGF + IL5 + IFNgamma + IFNalfa + IL1RA + IL2 + IP10 + IL2R + MIG + IL4
+| behavior_concern, data=proteome, overall = c(left = "Total"), caption = caption3)
+```
+
+```{r}
+proteome_vars <- names(proteome)[1:36] 
+
+prot_pvals <- sapply(proteome_vars, function(var) {
+  test <- t.test(proteome[[var]] ~ proteome$behavior_concern)
+  c(p.value = test$p.value, statistic = test$statistic)
+})
+
+# Convert to data frame for easier viewing
+prot_pvals <- as.data.frame(t(prot_pvals))
+prot_pvals
+```
+
+
