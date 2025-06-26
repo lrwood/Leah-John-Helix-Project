@@ -44,6 +44,7 @@ for (i in 1:1301) {
   }
 }
 PFAS$behavior_concern<-as.factor(PFAS$behavior_concern)
+PFAS$behavior_concern<-relevel(PFAS$behavior_concern, ref="Low")
 ```
 
 ```{r}
@@ -52,6 +53,44 @@ library(tableone)
 ```
 
 ```{r}
-table1(~hs_pfhxs_c_Log2+hs_pfhxs_m_Log2+hs_pfna_c_Log2+hs_pfna_m_Log2+hs_pfoa_c_Log2+hs_pfoa_m_Log2+hs_pfos_c_Log2+hs_pfos_m_Log2+hs_pfunda_c_Log2+hs_pfunda_m_Log2|behavior_concern,data=PFAS)
+#Add Labels 
+label(PFAS$hs_pfhxs_c_Log2)<- "PFHXS (C)"
+label(PFAS$hs_pfhxs_m_Log2)<- "PFHXS (M)"
+label(PFAS$hs_pfna_c_Log2)<- "PFNA (C)"
+label(PFAS$hs_pfna_m_Log2)<- "PFNA (M)"
+label(PFAS$hs_pfoa_c_Log2)<- "PFOA (C)"
+label(PFAS$hs_pfoa_m_Log2)<- "PFOA (M)"
+label(PFAS$hs_pfos_c_Log2)<- "PFOS (C)"
+label(PFAS$hs_pfos_m_Log2)<- "PFOS (M)"
+label(PFAS$hs_pfunda_c_Log2)<- "PFUNA (C)"
+label(PFAS$hs_pfunda_m_Log2)<- "PFUNA (M)"
+caption1<- "PFAS exposure (Log ng/mL) in Child Behavioral Categories"
+footnote1<- "(C) = In Child / (M) = In Mother"
+```
+
+```{r}
+table1(~hs_pfhxs_c_Log2+hs_pfhxs_m_Log2+hs_pfna_c_Log2+hs_pfna_m_Log2+hs_pfoa_c_Log2+hs_pfoa_m_Log2+hs_pfos_c_Log2+hs_pfos_m_Log2+hs_pfunda_c_Log2+hs_pfunda_m_Log2|behavior_concern,data=PFAS,overall=c(left="Total"), caption=caption1, footnote=footnote1)
+```
+
+```{r}
+#check Assumptions
+boxplot(hs_Gen_Tot~behavior_concern, data=PFAS)
+hist(PFAS[PFAS$behavior_concern=="High",12])
+hist(PFAS[PFAS$behavior_concern=="Low",12])
+```
+
+```{r}
+#We will be going with a test that checks medians
+
+pfas_vars <- names(PFAS)[2:11] 
+
+pfas_pvals <- sapply(pfas_vars, function(var) {
+  test <- wilcox.test(PFAS[[var]] ~ PFAS$behavior_concern)
+  c(p.value = test$p.value, statistic = test$statistic)
+})
+
+# Convert to data frame for easier viewing
+pfas_pvals <- as.data.frame(t(pfas_pvals))
+pfas_pvals
 ```
 
