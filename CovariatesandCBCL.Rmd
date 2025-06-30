@@ -1,0 +1,57 @@
+---
+title: "Covariates + CBCL"
+output: html_document
+---
+
+```{r}
+covariates[c("h_edumc_None", "h_cohort", "h_parity_None", "h_native_None", "e3_sex_None")] <- lapply(
+  covariates[c("h_edumc_None", "h_cohort", "h_parity_None","h_native_None","e3_sex_None")],
+  as.factor
+)
+PFAS_codebook<-codebook[c(160:169),]
+PFAS<-exposome[,c(PFAS_codebook$variable_name)]
+PFAS<-cbind(exposome$ID, PFAS)
+```
+
+
+```{r}
+library(dplyr)
+PFAS<-rename(PFAS, ID = `exposome$ID`)
+PFAS<-cbind(PFAS, phenotype$hs_Gen_Tot)
+PFAS<-rename(PFAS, hs_Gen_Tot=`phenotype$hs_Gen_Tot`)
+PFAS$behavior_concern<-vector(length=1301)
+for (i in 1:1301) {
+  score <- PFAS$hs_Gen_Tot[i]
+  
+  if (score < 60) {
+    PFAS$behavior_concern[i] <- "Low"
+  } else {
+    PFAS$behavior_concern[i] <- "High"
+  }
+}
+PFAS$behavior_concern<-as.factor(PFAS$behavior_concern)
+PFAS$behavior_concern<-relevel(PFAS$behavior_concern, ref="Low")
+Covariate_new = cbind(covariates, PFAS$hs_Gen_Tot, PFAS$behavior_concern)
+Covariate_new = rename(Covariate_new, hs_Gen_Tot = `PFAS$hs_Gen_Tot`)
+Covariate_new = rename(Covariate_new, behavior_concern = `PFAS$behavior_concern`) 
+```
+
+```{r}
+confounding_covariates_test_data = cbind(covariates, phenotype$hs_Gen_Tot)
+colnames(confounding_covariates_test_data)[16]<-"hs_Gen_Tot"
+```
+
+
+```{r}
+for (i in 3:16) {
+  var_name <- names(confounding_covariates_test_data)[i]
+  cat("\n====================\n")
+  cat("Model for:", var_name, "\n")
+  cat("====================\n")
+  predictor <- confounding_covariates_test_data[, i]
+  model <- lm(hs_Gen_Tot ~ predictor, data = confounding_covariates_test_data)
+  print(summary(model))
+}
+```
+
+
