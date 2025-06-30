@@ -1,0 +1,213 @@
+---
+title: "Linear and Logisitc Modeling"
+author: "Leah Wood"
+date: "2025-06-30"
+output: html_document
+---
+
+This document is going to be exploring regression (both linear and logistic) for exposome, child behavior (phenotype) and covariates. 
+
+```{r}
+library(dplyr)
+```
+
+```{r}
+#Load in the Data
+codebook<-read.csv("codebook.csv", header=T)
+covariates<-read.csv("covariates.csv", header = T)
+exposome<-read.csv("exposome.csv", header = T)
+phenotype<-read.csv("phenotype.csv", header=T)
+covariates<-covariates[,-1]
+phenotype<-phenotype[,-1]
+```
+
+```{r}
+#First going to merge behavior with PFAS
+PFAS_codebook<-codebook[c(160:169),]
+PFAS<-exposome[,c(PFAS_codebook$variable_name)]
+PFAS<-cbind(exposome$ID, PFAS)
+PFAS<-rename(PFAS, ID = `exposome$ID`)
+PFAS<-cbind(PFAS, phenotype$hs_Gen_Tot)
+PFAS<-rename(PFAS, hs_Gen_Tot=`phenotype$hs_Gen_Tot`)
+```
+
+```{r}
+#Now split the behavior
+PFAS$behavior_concern<-vector(length=1301)
+for (i in 1:1301) {
+  score <- PFAS$hs_Gen_Tot[i]
+  
+  if (score < 60) {
+    PFAS$behavior_concern[i] <- "Low"
+  } else {
+    PFAS$behavior_concern[i] <- "High"
+  }
+}
+PFAS$behavior_concern<-as.factor(PFAS$behavior_concern)
+PFAS$behavior_concern<-relevel(PFAS$behavior_concern, ref="Low")
+```
+
+```{r}
+library(reshape2)
+```
+
+```{r}
+#PFAS and behavior correlation
+pfas_cor<-cor(PFAS[,2:12])
+melt_pfas<-melt(pfas_cor)
+```
+
+```{r}
+library(ggplot2)
+```
+
+```{r}
+ggplot(data=melt_pfas, aes(x=Var1, y=Var2, fill=value))+
+  geom_tile()+ 
+  scale_fill_gradient2(low="white", high="darkred", midpoint = 0.5, mid="red")+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+```
+
+Not a lot of correlation going on.
+
+I'm now going to look at a linear regression with the outcome as gen_tot (continuous) and all of the PFAS and covariates.
+
+```{r}
+linear_PFAS<-lm(hs_Gen_Tot~hs_pfhxs_c_Log2+hs_pfhxs_m_Log2+hs_pfna_c_Log2+hs_pfna_m_Log2+hs_pfoa_c_Log2+hs_pfoa_m_Log2+hs_pfos_c_Log2+hs_pfos_m_Log2+hs_pfunda_c_Log2+hs_pfunda_m_Log2, data=PFAS)
+```
+
+```{r}
+summary(linear_PFAS)
+```
+
+Now a binary model for low or high risk.
+
+```{r}
+log_PFAS<-glm(behavior_concern~hs_pfhxs_c_Log2+hs_pfhxs_m_Log2+hs_pfna_c_Log2+hs_pfna_m_Log2+hs_pfoa_c_Log2+hs_pfoa_m_Log2+hs_pfos_c_Log2+hs_pfos_m_Log2+hs_pfunda_c_Log2+hs_pfunda_m_Log2, family="binomial", data=PFAS)
+```
+
+```{r}
+summary(log_PFAS)
+```
+
+Loop Through Each PFAS 
+
+```{r}
+linear_pfas_models<-list()
+x_cols<-names(PFAS)[2:12]
+y_var<-"hs_Gen_Tot"
+combinations<-list(
+  c("hs_pfhxs_c_Log2","hs_pfhxs_m_Log2"),
+  c("hs_pfna_c_Log2","hs_pfna_m_Log2"),
+  c("hs_pfoa_c_Log2","hs_pfoa_m_Log2"),
+  c("hs_pfos_c_Log2", "hs_pfos_m_Log2"),
+  c("hs_pfunda_c_Log2", "hs_pfunda_m_Log2")
+)
+  
+ for (i in seq_along(combinations)) {
+  x_vars <- combinations[[i]]
+  formula_str <- paste(y_var, "~", paste(x_vars, collapse = " + "))
+  model <- lm(as.formula(formula_str), data = PFAS)
+  linear_pfas_models[[i]] <- model
+}
+
+```
+
+```{r}
+for (i in c(1:5)){
+  print(summary(linear_pfas_models[[i]]))
+}
+```
+
+```{r}
+log_pfas_models<-list()
+y_var2<-"behavior_concern"
+for (i in seq_along(combinations)) {
+  x_vars <- combinations[[i]]
+  formula_str <- paste(y_var2, "~", paste(x_vars, collapse = " + "))
+  model <- glm(as.formula(formula_str), family="binomial", data = PFAS)
+  log_pfas_models[[i]] <- model
+}
+```
+
+```{r}
+for (i in c(1:5)){
+  print(summary(log_pfas_models[[i]]))
+}
+```
+
+```{r}
+#Merging covariates
+data_merge<-cbind(PFAS, covariates)
+data_merge<-data_merge[,-14]
+```
+
+```{r}
+data_merge$h_cohort = as.factor(data_merge$h_cohort)
+data_merge$e3_sex_None = as.factor(data_merge$e3_sex_None)
+data_merge$e3_yearbir_None = as.factor(data_merge$e3_yearbir_None)
+data_merge$h_edumc_None = as.factor(data_merge$h_edumc_None)
+data_merge$h_native_None = as.factor(data_merge$h_native_None)
+data_merge$h_parity_None = as.factor(data_merge$h_parity_None)
+```
+
+```{r}
+#The Multi regression with PFAS and covariates
+big_regression<-lm(hs_Gen_Tot~h_cohort + e3_sex_None + e3_yearbir_None + h_mbmi_None + hs_wgtgain_None + e3_gac_None + h_age_None + h_edumc_None + h_native_None + h_parity_None + hs_child_age_None + hs_c_height_None + hs_c_weight_None+hs_pfhxs_c_Log2+hs_pfhxs_m_Log2+hs_pfna_c_Log2+hs_pfna_m_Log2+hs_pfoa_c_Log2+hs_pfoa_m_Log2+hs_pfos_c_Log2+hs_pfos_m_Log2+hs_pfunda_c_Log2+hs_pfunda_m_Log2, data=data_merge)
+summary(big_regression)
+```
+
+```{r}
+#Looking at jsut covariates
+covariate_regression<-lm(hs_Gen_Tot~h_cohort + e3_sex_None + e3_yearbir_None + h_mbmi_None + hs_wgtgain_None + e3_gac_None + h_age_None + h_edumc_None + h_native_None + h_parity_None + hs_child_age_None + hs_c_height_None + hs_c_weight_None, data=data_merge)
+summary(covariate_regression)
+```
+
+```{r}
+#write.csv(data_merge, file="data_merge.csv")
+```
+
+```{r}
+cov_cor<-cor(data_merge[,c(12,17,18,19,20,24,25,26)])
+melt_cov<-melt(cov_cor)
+ggplot(data=melt_cov, aes(x=Var1, y=Var2, fill=value))+
+  geom_tile()+ 
+  scale_fill_gradient2(low="white", high="darkred", midpoint = 0.5, mid="red")+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+```
+
+```{r}
+#THE BIG HEAT MAP
+full_cor<-cor(data_merge[,c(12,2:11,17,18,19,20,24,25,26)])
+melt_full<-melt(full_cor)
+ggplot(data=melt_full, aes(x=Var1, y=Var2, fill=value))+
+  geom_tile()+ 
+  scale_fill_gradient2(low="white", high="darkred", midpoint = 0.5, mid="red")+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+```
+
+```{r}
+proteome_clean<-as.data.frame(proteome.d)
+proteome_clean<-t(proteome_clean)
+proteome_clean <- proteome_clean[order(rownames(proteome_clean)), ]
+```
+
+```{r}
+#write.csv(proteome_clean, "proteome_clean.csv")
+```
+
+```{r}
+df_large_subset <- data_merge[rownames(proteome_clean),]
+data_merge_new <- cbind(proteome_clean, df_large_subset)
+```
+
+```{r}
+#Heat map for proteins and GenTot
+pro_cor<-cor(data_merge_new[,c(1:36,48)])
+melt_pro<-melt(pro_cor)
+ggplot(data=melt_pro, aes(x=Var1, y=Var2, fill=value))+
+  geom_tile()+ 
+  scale_fill_gradient2(low="white", high="darkred", midpoint = 0.5, mid="red")+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+```
+
