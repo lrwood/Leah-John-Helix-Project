@@ -126,7 +126,14 @@ for (i in seq_along(combinations)) {
   x_vars <- combinations[[i]]
   formula_str <- paste(y_var2, "~", paste(x_vars, collapse = " + "))
   model <- glm(as.formula(formula_str), family="binomial", data = PFAS)
+  log_pfas_modlog_pfas_models<-list()
+y_var2<-"behavior_concern"
+for (i in seq_along(combinations)) {
+  x_vars <- combinations[[i]]
+  formula_str <- paste(y_var2, "~", paste(x_vars, collapse = " + "))
+  model <- glm(as.formula(formula_str), family="binomial", data = PFAS)
   log_pfas_models[[i]] <- model
+}els[[i]] <- model
 }
 ```
 
@@ -187,9 +194,9 @@ ggplot(data=melt_full, aes(x=Var1, y=Var2, fill=value))+
 ```
 
 ```{r}
-proteome_clean<-as.data.frame(proteome.d)
-proteome_clean<-t(proteome_clean)
-proteome_clean <- proteome_clean[order(rownames(proteome_clean)), ]
+#proteome_clean2<-as.data.frame(proteome.d)
+#proteome_clean2<-t(proteome_clean2)
+#proteome_clean2 <- proteome_clean2[order(rownames(proteome_clean2)), ]
 ```
 
 ```{r}
@@ -197,8 +204,9 @@ proteome_clean <- proteome_clean[order(rownames(proteome_clean)), ]
 ```
 
 ```{r}
-df_large_subset <- data_merge[rownames(proteome_clean),]
-data_merge_new <- cbind(proteome_clean, df_large_subset)
+proteome_clean<-read.csv("proteome_clean.csv")
+proteome_clean<-proteome_clean|>arrange(X)
+data_merge_new <- merge(proteome_clean, data_merge, by.x = "X", by.y = "ID")
 ```
 
 ```{r}
@@ -211,3 +219,86 @@ ggplot(data=melt_pro, aes(x=Var1, y=Var2, fill=value))+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 ```
 
+```{r}
+#One protein and one PFAS at a time in Children
+pfas_protein_models <- list()
+y_vars_protein <- names(data_merge_new)[2:37]
+x_vars_pfas <- names(data_merge_new)[c(39, 41, 43, 45, 47)]
+for (i in seq_along(y_vars_protein)) {
+  y <- y_vars_protein[[i]]
+  for (ii in seq_along(x_vars_pfas)) {
+    x <- x_vars_pfas[[ii]]
+    formula_str <- paste(y, "~", x)
+    model <- lm(as.formula(formula_str), data = data_merge_new)
+    model_name <- paste(y, x, sep = "_vs_")
+    pfas_protein_models[[model_name]] <- model
+  }
+}
+
+```
+
+```{r}
+#Grab the signifance 
+pvals<-vector(length = 180)
+for (i in c(1:180)){
+  pvals[[i]]<-summary(pfas_protein_models[[i]])$coefficients[2,4]
+}
+significant<-which(pvals<0.05)
+
+for (i in significant){
+  print(formula(pfas_protein_models[[i]]))
+}
+```
+
+```{r}
+#Format in a df and pull the proteins 
+results_df <- data.frame(
+  protein = character(),
+  pfas = character(),
+  coefficient = numeric(),
+  p_value = numeric(),
+  stringsAsFactors = FALSE
+)
+
+for (name in names(pfas_protein_models)) {
+  model <- pfas_protein_models[[name]]
+  coefs <- summary(model)$coefficients
+  y <- as.character(formula(model))[2]
+  x <- as.character(formula(model))[3]
+  
+  results_df <- rbind(results_df, data.frame(
+    protein = y,
+    pfas = x,
+    coefficient = coefs[2, 1],  # estimate
+    p_value = coefs[2, 4]       # p-value
+  ))
+}
+results_df<-results_df|>filter(p_value<0.05)
+print(unique(results_df$protein))
+```
+
+```{r}
+#Do the same thing but in a multi regression with PFAS
+pfas_protein_multi <- list()
+y_vars_protein <- names(data_merge_new)[2:37]
+for (i in seq_along(y_vars_protein)) {
+  y <- y_vars_protein[[i]]
+  formula_str <- paste(y, "~", "hs_pfhxs_c_Log2+hs_pfna_c_Log2+hs_pfoa_c_Log2+hs_pfos_c_Log2+hs_pfunda_c_Log2")
+  model <- lm(as.formula(formula_str), data = data_merge_new)
+  model_name <- paste(y, sep = "_vs_")
+    pfas_protein_multi[[model_name]] <- model
+  }
+
+```
+
+```{r}
+#Getting significance 
+pvals2<-vector(length = 36)
+for (i in c(1:36)){
+  pvals2[[i]]<-summary(pfas_protein_multi[[i]])$coefficients[2,4]
+}
+significant2<-which(pvals2<0.05)
+for (i in significant2){
+  print(formula(pfas_protein_multi[[i]]))
+}
+```
