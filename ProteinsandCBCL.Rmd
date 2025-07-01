@@ -3,3 +3,13 @@ title: "ProteinsandCBCL"
 output: html_document
 ---
 
+```{r}
+protein_data <- t(proteome.d)
+#protein_data <- protein_data[order(as.numeric(rownames(protein_data))), ]
+```
+
+```{r}
+dim(protein_data)
+
+```
+

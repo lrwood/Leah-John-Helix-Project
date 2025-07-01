@@ -43,7 +43,7 @@ colnames(confounding_covariates_test_data)[16]<-"hs_Gen_Tot"
 
 
 ```{r}
-for (i in 3:16) {
+for (i in 3:15) {
   var_name <- names(confounding_covariates_test_data)[i]
   cat("\n====================\n")
   cat("Model for:", var_name, "\n")
@@ -54,4 +54,30 @@ for (i in 3:16) {
 }
 ```
 
+```{r}
+data_merge = cbind(confounding_covariates_test_data, PFAS)
+data_merge = data_merge[,-17]
+data_merge = data_merge[,-16]
+```
+
+
+```{r}
+for (i in 3:25) { 
+  var1_name <- names(data_merge)[i]
+  var2_name <- names(data_merge)[i + 1]
+  
+  cat("\n====================\n")
+  cat("Testing if adding variable", var2_name, "to", var1_name, "improves the model beyond", var1_name, "alone\n")
+  cat("====================\n")
+  
+  predictor1 <- data_merge[, i]
+  predictor2 <- data_merge[, i + 1]
+  
+  model1 <- lm(hs_Gen_Tot.1 ~ predictor1, data = data_merge)
+  model2 <- lm(hs_Gen_Tot.1 ~ predictor1 + predictor2, data = data_merge)
+  
+  print(anova(model1, model2))
+}
+
+```
 

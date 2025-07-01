@@ -3,3 +3,24 @@ title: "fuckassscatterplots"
 output: html_document
 ---
 
+```{r}
+for (i in 16:25) {
+  var_name <- names(data_merge)[i]
+  plot(exp(data_merge[, i]), data_merge$hs_Gen_Tot.1,
+       xlab = var_name,
+       ylab = "hs_Gen_Tot.1",
+       main = paste("Scatterplot of", var_name, "vs CBCL problem score"))
+}
+```
+
+```{r}
+for (i in 16:25) {
+  var_name <- names(data_merge)[i]
+  plot(data_merge[, i], data_merge$hs_Gen_Tot.1,
+       xlab = var_name,
+       ylab = "hs_Gen_Tot.1",
+       main = paste("Scatterplot of", var_name, "vs CBCL problem score"))
+}
+```
+
+
