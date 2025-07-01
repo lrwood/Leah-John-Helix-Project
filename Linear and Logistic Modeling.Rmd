@@ -133,7 +133,7 @@ for (i in seq_along(combinations)) {
   formula_str <- paste(y_var2, "~", paste(x_vars, collapse = " + "))
   model <- glm(as.formula(formula_str), family="binomial", data = PFAS)
   log_pfas_models[[i]] <- model
-}els[[i]] <- model
+}
 }
 ```
 
@@ -302,3 +302,14 @@ for (i in significant2){
   print(formula(pfas_protein_multi[[i]]))
 }
 ```
+
+```{r}
+#Heat map for proteins and PFAs
+pro_cor_pfa<-cor(data_merge_new[,c(2:47)])
+melt_pro_pfa<-melt(pro_cor_pfa)
+ggplot(data=melt_pro_pfa, aes(x=Var1, y=Var2, fill=value))+
+  geom_tile()+ 
+  scale_fill_gradient2(low="white", high="darkred", midpoint = 0.5, mid="red")+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+```
+
