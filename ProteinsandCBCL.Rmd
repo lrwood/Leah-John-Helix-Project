@@ -10,6 +10,18 @@ protein_data <- t(proteome.d)
 
 ```{r}
 dim(protein_data)
+```
+
+```{r}
+colnames(phenotype)
+```
+
+```{r}
+# If the first column in codebook has no name, give it one
+colnames(codebook)[1] <- "variable"
+
+# Subset codebook to only keep rows where the first column is in the colnames of proteinsandCBCL
+phenotypes_explained <- codebook[codebook$variable %in% colnames(phenotype), ]
 
 ```
 

@@ -3,3 +3,54 @@ title: "PFASandProteins"
 output: html_document
 ---
 
+```{r}
+protein_data_clean = proteome_clean
+protein_data_clean <- protein_data_clean[order(protein_data_clean[[1]]), ]
+```
+
+```{r}
+dim(data_merge)
+dim(protein_data_clean)
+```
+
+```{r}
+names(protein_data_clean)[1] <- "ID"
+library(dplyr)
+pfas_and_proteins_mother = inner_join(data_merge, protein_data_clean, by = "ID")
+pfas_and_proteins_mother = pfas_and_proteins_mother[ , -c(1, 3, 5, 7, 9, 11)]
+ 
+```
+
+```{r}
+significant_results <- data.frame(
+  PFAS = character(),
+  Protein = character(),
+  Correlation = numeric(),
+  P_value = numeric(),
+  stringsAsFactors = FALSE
+)
+
+for (i in 1:5) {
+  for (j in 22:57) {
+    test <- cor.test(pfas_and_proteins_mother[[i]], pfas_and_proteins_mother[[j]])
+    
+    if (test$p.value < 0.05) {
+      significant_results <- rbind(significant_results, data.frame(
+        PFAS = names(pfas_and_proteins_mother)[i],
+        Protein = names(pfas_and_proteins_mother)[j],
+        Correlation = test$estimate,
+        P_value = test$p.value
+      ))
+    }
+  }
+}
+
+print(significant_results)
+
+```
+
+
+```{r}
+unique(significant_results$Protein)
+```
+
