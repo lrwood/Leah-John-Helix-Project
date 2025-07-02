@@ -1,0 +1,95 @@
+---
+title: "Stepwise Regression"
+author: "Leah Wood"
+date: "2025-07-02"
+output: html_document
+---
+
+# Step 0
+### Call in the data
+
+```{r}
+library(dplyr)
+```
+
+```{r}
+#Load in the Data
+codebook<-read.csv("codebook.csv", header=T)
+covariates<-read.csv("covariates.csv", header = T)
+exposome<-read.csv("exposome.csv", header = T)
+phenotype<-read.csv("phenotype.csv", header=T)
+covariates<-covariates[,-1]
+phenotype<-phenotype[,-1]
+proteome<-read.csv("proteome_clean.csv")
+data_merge<-read.csv("data_merge.csv")
+#Data merge has PFAS (mother and child), covariates, GenTot, behavior classification, and an ID
+data_merge<-data_merge[,-1]
+```
+
+```{r}
+#Ensure things are factors
+data_merge$h_cohort = as.factor(data_merge$h_cohort)
+data_merge$e3_sex_None = as.factor(data_merge$e3_sex_None)
+data_merge$e3_yearbir_None = as.factor(data_merge$e3_yearbir_None)
+data_merge$h_edumc_None = as.factor(data_merge$h_edumc_None)
+data_merge$h_native_None = as.factor(data_merge$h_native_None)
+data_merge$h_parity_None = as.factor(data_merge$h_parity_None)
+```
+
+```{r}
+#Fix the proteome data
+proteome<-rename(proteome, ID = X)
+proteome<-proteome|>arrange(ID)
+#Data merge proteome has the PFAS (mother and child), covariates, GenTot, behavior classification, and all proteins, and an ID
+data_merge_proteome <- merge(proteome, data_merge, by.x = "ID", by.y = "ID")
+```
+
+# Step 1
+### PFAS in the Mother to PFAS in the Child
+
+```{r}
+test1<-lm(hs_pfhxs_c_Log2~hs_pfhxs_m_Log2, data=data_merge_proteome)
+summary(test1)$coefficients
+```
+
+
+```{r}
+#This model shows how PFAS in the mother impact PFAS in the child while accounting for the mother's confounding factors.
+
+#We would be interested to look at how PFAS interact between mother and child WITHOUT the covariates as well.
+
+results_PFAS_mc <- data.frame(
+  PFAS_ch = character(),
+  PFAS_m = character(),
+  Coefficient = numeric(),
+  P_value = numeric(),
+  stringsAsFactors = FALSE
+)
+
+for (i in 1:5) {
+    test <- lm(data_merge_proteome[[2*i+36]]~data_merge_proteome[[2*i+37]]+h_mbmi_None+hs_wgtgain_None+e3_gac_None+h_age_None+h_edumc_None+h_native_None+h_parity_None, data=data_merge_proteome)
+    
+        results_PFAS_mc <- rbind(results_PFAS_mc, data.frame(
+        PFAS_ch = names(data_merge_proteome)[2*i+36],
+        PFAS_m = names(data_merge_proteome)[2*i+37],
+        Coefficient = summary(test)$coefficients[2,1],
+        P_value = summary(test)$coefficients[2,4]))
+}
+
+
+print(results_PFAS_mc)
+
+```
+
+The results above show that PFAS exposure in the mother significantly impacts PFAS exposure in the child after controlling for confounding factors. 
+
+# Step 2
+### PFAS to Behavior 
+
+First we need to sum the PFAS in the children to show a accumulated effect. 
+
+```{r}
+data_merge_proteome<-data_merge_proteome|>mutate(sum_c_pfas=log2((2^(hs_pfhxs_c_Log2)+2^(hs_pfna_c_Log2)+2^(hs_pfoa_c_Log2)+2^(hs_pfos_c_Log2)+2^(hs_pfunda_c_Log2))))
+```
+
+
