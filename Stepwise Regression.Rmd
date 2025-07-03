@@ -83,6 +83,33 @@ print(results_PFAS_mc)
 
 The results above show that PFAS exposure in the mother significantly impacts PFAS exposure in the child after controlling for confounding factors. 
 
+#### Figure of Step 1
+
+```{r}
+library(ggplot2)
+
+plots <- list()  # initialize an empty list
+
+for (i in 1:5) {
+  p <- ggplot(data_merge_proteome, 
+              aes(x = data_merge_proteome[[2*i + 37]], 
+                  y = data_merge_proteome[[2*i + 36]])) +
+    geom_point() +
+    labs(x = names(data_merge_proteome)[2*i + 37],
+         y = names(data_merge_proteome)[2*i + 36],
+         title = paste("Plot", i))
+  
+  plots[[i]] <- p  # store each plot in the list
+}
+
+# Display all 5 plots (one by one)
+for (i in 1:5) {
+  print(plots[[i]])
+}
+
+
+```
+
 # Step 2
 ### PFAS to Behavior 
 
@@ -92,4 +119,162 @@ First we need to sum the PFAS in the children to show a accumulated effect.
 data_merge_proteome<-data_merge_proteome|>mutate(sum_c_pfas=log2((2^(hs_pfhxs_c_Log2)+2^(hs_pfna_c_Log2)+2^(hs_pfoa_c_Log2)+2^(hs_pfos_c_Log2)+2^(hs_pfunda_c_Log2))))
 ```
 
+```{r}
+#We are going to add in covariates about the children to adjust for confounding factors. 
+pfas_sum_behavior<-lm(hs_Gen_Tot~sum_c_pfas+h_cohort+e3_sex_None+hs_child_age_None+hs_c_weight_None+hs_c_height_None+h_age_None+h_edumc_None+h_native_None+h_parity_None, data=data_merge_proteome)
+summary(pfas_sum_behavior)
+#If there's time let's go back and look at other factors like drinking (e3_alcpreg_yn_None)
+```
 
+This shows that the sum of PFAs exposure in children is significantly associated with the CBCL score even after adjusting for confounding factors. 
+
+```{r}
+#We can make a heat map for this model 
+library(reshape2)
+library(ggplot2)
+st2_cor<-cor(data_merge_proteome[,c("hs_Gen_Tot","sum_c_pfas","hs_child_age_None","hs_c_weight_None","hs_c_height_None","h_age_None")])
+melt_st2<-melt(st2_cor)
+ggplot(data=melt_st2, aes(x=Var1, y=Var2, fill=value))+
+  geom_tile()+ 
+  scale_fill_gradient2(low="darkblue", high="darkred", midpoint = 0.5, mid="white")+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.40, hjust = 1))
+
+#We need to fix these colors
+```
+
+# Step 3
+### Modeling the Impact of the Sum of PFAS on Proteins
+
+```{r}
+#This is Leah's looping method
+pfas_proteins<-list()
+
+results_PFAS_proteins <- data.frame(
+  Protein = character(),
+  Coefficient = numeric(),
+  P_value = numeric(),
+  stringsAsFactors = FALSE
+)
+
+y_proteins<-names(data_merge_proteome)[2:37]
+for (i in seq_along(y_proteins)){
+  y<-y_proteins[[i]]
+  formula<-paste(y, "~", "sum_c_pfas")
+  model <- lm(as.formula(formula), data = data_merge_proteome)
+  pfas_proteins[[i]]<-model
+  
+  results_PFAS_proteins <- rbind(results_PFAS_proteins, data.frame(
+        Protein = y,
+        Coefficient = summary(pfas_proteins[[i]])$coefficients[2,1],
+        P_value = summary(pfas_proteins[[i]])$coefficients[2,4]))
+}
+
+signfiicant_proteins<-results_PFAS_proteins|>filter(P_value<0.05)
+print(signfiicant_proteins)
+```
+
+The sum of PFAS exposure in children is significantly associated with 13 protein levels (without checking for confounders). 
+
+```{r}
+#We are going to rerun this using John's looping method
+significant_proteins_2 <- data.frame(
+  Protein = character(),
+  Coefficient = numeric(),
+  P_value = numeric(),
+  stringsAsFactors = FALSE
+)
+
+for (i in 2:37) {
+    test <- lm(data_merge_proteome[[i]]~ data_merge_proteome[[63]])
+    
+
+      significant_proteins_2 <- rbind(significant_proteins_2, data.frame(
+        Protein = names(data_merge_proteome)[i],
+        Coefficient = summary(test)$coefficients[2,1],
+        P_value = summary(test)$coefficients[2,4]
+      ))
+  
+}
+
+significant_proteins_2|>filter(P_value<0.05)
+
+
+```
+
+We found 13 proteins significantly associated with the PFAs sum (all of the coefficients are negative).
+
+```{r}
+#Potentially add false discovery rate analysis during this step
+```
+
+# Step 4
+### Significant Proteins to Behavior
+
+```{r}
+protein_names<-signfiicant_proteins$Protein
+indices <- match(protein_names, names(data_merge_proteome))
+print(indices)
+significant_proteins_data<-data_merge_proteome[,c(3,4,7,8 ,9,11,13,14,16,17,19,32,35, 48)]
+```
+
+```{r}
+#Here we are doing 13 regressions (one for each significant protein on behavior)
+significant_proteins_and_CBCL <- data.frame(
+  Protein = character(),
+  Coefficient = numeric(),
+  P_value = numeric(),
+  stringsAsFactors = FALSE
+)
+
+for (i in 1:13) {
+    test <- lm(significant_proteins_data$hs_Gen_Tot ~ significant_proteins_data[[i]])
+
+      significant_proteins_and_CBCL <- rbind(significant_proteins_and_CBCL, data.frame(
+        Protein = names(significant_proteins_data)[i],
+        Coefficient = summary(test)$coefficients[2,1],
+        P_value = summary(test)$coefficients[2,4]
+      ))
+}
+
+print(significant_proteins_and_CBCL)
+SPCBLC<-significant_proteins_and_CBCL|>filter(P_value<0.05)
+print(SPCBLC)
+```
+
+We found 7 proteins (that are impacted by PFAS) to be significantly associated with behavior.
+
+```{r}
+#Now we are going to adjust for cofounders to see if these proteins are still significant with behavior. 
+protein_names2<-SPCBLC$Protein
+indices2 <- match(protein_names2, names(data_merge_proteome))
+print(indices2)
+proteins_interest_data<-data_merge_proteome[,c(3,4,7,8,11,14,17,50:62,48)]
+```
+
+```{r}
+#Here's the loop
+
+protein_CBCL_test<-list()
+significant_proteins_and_CBCL_w_cov <- data.frame(
+  Protein = character(),
+  Coefficient = numeric(),
+  P_value = numeric(),
+  stringsAsFactors = FALSE
+)
+
+for (i in 1:7) {
+    test <- lm(proteins_interest_data$hs_Gen_Tot ~ proteins_interest_data[[i]]+h_cohort+e3_sex_None+hs_child_age_None+hs_c_weight_None+hs_c_height_None+h_age_None+h_edumc_None+h_native_None+h_parity_None, data=proteins_interest_data)
+  protein_CBCL_test[[i]]<-test
+      significant_proteins_and_CBCL_w_cov <- rbind(significant_proteins_and_CBCL_w_cov, data.frame(
+        Protein = names(proteins_interest_data)[i],
+        Coefficient = summary(test)$coefficients[2,1],
+        P_value = summary(test)$coefficients[2,4]
+      ))
+}
+
+print(significant_proteins_and_CBCL_w_cov)
+
+
+```
+
+Once adjusting for covariates, only IL1beta and IL6 are significantly associated with behavior. 
