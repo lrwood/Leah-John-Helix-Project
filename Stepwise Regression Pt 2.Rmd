@@ -1,4 +1,10 @@
 ---
+title: "Stepwise Regression Pt 2"
+author: "Leah Wood"
+date: "2025-07-09"
+output: pdf_document
+---
+---
 title: "Stepwise Regression"
 author: "Leah Wood"
 date: "2025-07-02"
@@ -116,7 +122,7 @@ for (i in 1:5) {
 First we need to sum the PFAS in the children to show a accumulated effect. 
 
 ```{r}
-data_merge_proteome<-data_merge_proteome|>mutate(sum_c_pfas=log2((2^(hs_pfhxs_c_Log2)+2^(hs_pfna_c_Log2)+2^(hs_pfoa_c_Log2)+2^(hs_pfos_c_Log2)+2^(hs_pfunda_c_Log2))))
+data_merge_proteome<-data_merge_proteome|>mutate(sum_c_pfas=hs_pfhxs_c_Log2+hs_pfna_c_Log2+hs_pfoa_c_Log2+hs_pfos_c_Log2+hs_pfunda_c_Log2)
 ```
 
 ```{r}
@@ -214,7 +220,7 @@ We found 13 proteins significantly associated with the PFAs sum (all of the coef
 protein_names<-signfiicant_proteins$Protein
 indices <- match(protein_names, names(data_merge_proteome))
 print(indices)
-significant_proteins_data<-data_merge_proteome[,c(3,4,7,8 ,9,11,13,14,16,17,19,32,35, 48)]
+significant_proteins_data<-data_merge_proteome[,c(3, 4, 7, 8, 9, 11, 13, 14, 15, 16, 17, 18, 19, 20, 23, 26, 27, 28, 29, 32, 33, 35, 36,48)]
 ```
 
 ```{r}
@@ -226,7 +232,7 @@ significant_proteins_and_CBCL <- data.frame(
   stringsAsFactors = FALSE
 )
 
-for (i in 1:13) {
+for (i in 1:23) {
     test <- lm(significant_proteins_data$hs_Gen_Tot ~ significant_proteins_data[[i]])
 
       significant_proteins_and_CBCL <- rbind(significant_proteins_and_CBCL, data.frame(
