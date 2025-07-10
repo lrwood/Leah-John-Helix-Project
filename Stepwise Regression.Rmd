@@ -348,3 +348,81 @@ grid.arrange(p1,p2, ncol=1)
 data_merge_proteome<-data_merge_proteome|>mutate(test_logs=hs_pfhxs_c_Log2+hs_pfna_c_Log2+hs_pfoa_c_Log2+hs_pfos_c_Log2+hs_pfunda_c_Log2)
 ```
 
+# Mediation Analysis
+
+We are going to start with IL6
+
+```{r}
+model2<-lm(IL6~sum_c_pfas, data=data_merge_proteome)
+```
+
+```{r}
+model3<-lm(hs_Gen_Tot~sum_c_pfas+IL6+h_cohort+e3_sex_None+hs_child_age_None+hs_c_weight_None+hs_c_height_None+h_age_None+h_edumc_None+h_native_None+h_parity_None, data=data_merge_proteome)
+```
+
+```{r}
+#install.packages("mediation")
+library(mediation)
+```
+
+```{r}
+mediation_analysis=mediate(model2, model3, treat="sum_c_pfas", mediator="IL6", boot=TRUE, sims=200)
+```
+
+```{r}
+summary(mediation_analysis)
+```
+
+Other Log 2 Method for Mediation
+
+```{r}
+model2<-lm(IL6~test_logs, data=data_merge_proteome)
+```
+
+```{r}
+model3<-lm(hs_Gen_Tot~test_logs+IL6+h_cohort+e3_sex_None+hs_child_age_None+hs_c_weight_None+hs_c_height_None+h_age_None+h_edumc_None+h_native_None+h_parity_None, data=data_merge_proteome)
+```
+
+```{r}
+mediation_analysis=mediate(model2, model3, treat="test_logs", mediator="IL6", boot=TRUE, sims=200)
+```
+
+```{r}
+summary(mediation_analysis)
+```
+
+Trying for the mother's PFAS
+
+```{r}
+model2<-lm(IL6~sum_m_pfas, data=data_merge_proteome)
+```
+
+```{r}
+model3<-lm(hs_Gen_Tot~sum_m_pfas+IL6+h_cohort+e3_sex_None+hs_child_age_None+hs_c_weight_None+hs_c_height_None+h_age_None+h_edumc_None+h_native_None+h_parity_None, data=data_merge_proteome)
+```
+
+```{r}
+mediation_analysis=mediate(model2, model3, treat="sum_m_pfas", mediator="IL6", boot=TRUE, sims=200)
+```
+
+```{r}
+summary(mediation_analysis)
+```
+
+Now for IL1beta
+
+```{r}
+model2b<-lm(IL1beta~sum_c_pfas, data=data_merge_proteome)
+```
+
+```{r}
+model3b<-lm(hs_Gen_Tot~sum_c_pfas+IL1beta+h_cohort+e3_sex_None+hs_child_age_None+hs_c_weight_None+hs_c_height_None+h_age_None+h_edumc_None+h_native_None+h_parity_None, data=data_merge_proteome)
+```
+
+```{r}
+mediation_analysisb=mediate(model2b, model3b, treat="sum_c_pfas", mediator="IL1beta", boot=TRUE, sims=200)
+```
+
+```{r}
+summary(mediation_analysisb)
+```
